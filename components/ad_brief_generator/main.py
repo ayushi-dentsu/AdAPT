@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Ad Brief Generator Component
+Ad Brief Generator Component - Cloud Function
 Generate a structured ad brief by synthesizing USP and style analysis using Gemini Pro.
 """
 
-import argparse
+import functions_framework
 import json
 import uuid
 from google.cloud import storage
@@ -139,33 +139,37 @@ Fill in all fields appropriately based on the input analyses.
             }
         }
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--gcs_usp_analysis_uri', required=True, help='GCS URI of USP analysis JSON')
-    parser.add_argument('--gcs_style_analysis_uri', required=True, help='GCS URI of style analysis JSON')
-    parser.add_argument('--gcs_output_uri', required=True, help='GCS URI for output ad brief JSON')
-    parser.add_argument('--project', required=True, help='GCP project ID')
-    parser.add_argument('--location', required=True, help='GCP location')
-    parser.add_argument('--campaign_id', help='Campaign ID (optional)')
-    parser.add_argument('--product_id', help='Product ID (optional)')
+@functions_framework.http
+def main_handler(request):
+    """HTTP Cloud Function for ad brief generation."""
+    json_data = request.get_json()
+    if not json_data:
+        return {'error': 'Invalid JSON body'}, 400
 
-    args = parser.parse_args()
+    # Extract parameters
+    gcs_usp_analysis_uri = json_data.get('gcs_usp_analysis_uri')
+    gcs_style_analysis_uri = json_data.get('gcs_style_analysis_uri')
+    gcs_output_uri = json_data.get('gcs_output_uri')
+    project = json_data.get('project')
+    location = json_data.get('location')
+    campaign_id = json_data.get('campaign_id', f"campaign-{uuid.uuid4().hex[:6]}")
+    product_id = json_data.get('product_id', f"product-{uuid.uuid4().hex[:6]}")
 
-    # Read inputs
-    usp_analysis = read_json_from_gcs(args.gcs_usp_analysis_uri)
-    style_analysis = read_json_from_gcs(args.gcs_style_analysis_uri)
+    if not all([gcs_usp_analysis_uri, gcs_style_analysis_uri, gcs_output_uri, project]):
+        return {'error': 'Missing required parameters'}, 400
 
-    # Set IDs
-    campaign_id = args.campaign_id or f"campaign-{uuid.uuid4().hex[:6]}"
-    product_id = args.product_id or f"product-{uuid.uuid4().hex[:6]}"
+    try:
+        # Read inputs
+        usp_analysis = read_json_from_gcs(gcs_usp_analysis_uri)
+        style_analysis = read_json_from_gcs(gcs_style_analysis_uri)
 
-    # Generate brief
-    brief = generate_ad_brief(usp_analysis, style_analysis, campaign_id, product_id)
+        # Generate brief
+        brief = generate_ad_brief(usp_analysis, style_analysis, campaign_id, product_id)
 
-    # Write output
-    write_json_to_gcs(args.gcs_output_uri, brief)
+        # Write output
+        write_json_to_gcs(gcs_output_uri, brief)
 
-    print(f"Ad brief generation completed. Output saved to {args.gcs_output_uri}")
+        return {'status': 'success', 'output_uri': gcs_output_uri}, 200
 
-if __name__ == "__main__":
-    main()
+    except Exception as e:
+        return {'error': str(e)}, 500

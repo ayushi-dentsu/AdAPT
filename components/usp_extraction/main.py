@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-USP Extraction Component
+USP Extraction Component - Cloud Function
 Extract Unique Selling Propositions and emotional triggers from product data using Gemini Pro.
 """
 
-import argparse
+import functions_framework
 import json
 from google.cloud import storage
 from google.cloud import aiplatform
@@ -28,7 +28,6 @@ def write_json_to_gcs(blob_uri, data):
     bucket_name, blob_name = blob_path.split("/", 1)
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(blob_name)
-
     blob.upload_from_string(json.dumps(data, indent=2), content_type='application/json')
 
 def extract_usp_emotion(product_data):
@@ -74,31 +73,39 @@ Respond only with valid JSON, no other text.
             "emotions": []
         }
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--gcs_product_data_uri', required=True, help='GCS URI of input product data JSON')
-    parser.add_argument('--gcs_output_uri', required=True, help='GCS URI for output analysis JSON')
-    parser.add_argument('--project', required=True, help='GCP project ID')
-    parser.add_argument('--location', required=True, help='GCP location')
+@functions_framework.http
+def main_handler(request):
+    """HTTP Cloud Function for USP extraction."""
+    json_data = request.get_json()
+    if not json_data:
+        return {'error': 'Invalid JSON body'}, 400
 
-    args = parser.parse_args()
+    # Extract parameters
+    gcs_product_data_uri = json_data.get('gcs_product_data_uri')
+    gcs_output_uri = json_data.get('gcs_output_uri')
+    project = json_data.get('project')
+    location = json_data.get('location')
 
-    # Read product data
-    product_data = read_json_from_gcs(args.gcs_product_data_uri)
+    if not all([gcs_product_data_uri, gcs_output_uri, project]):
+        return {'error': 'Missing required parameters'}, 400
 
-    # Extract USPs and emotions
-    analysis = extract_usp_emotion(product_data)
+    try:
+        # Read product data
+        product_data = read_json_from_gcs(gcs_product_data_uri)
 
-    # Add metadata
-    output_data = {
-        "version": "1.0",
-        "analysis": analysis
-    }
+        # Extract USPs and emotions
+        analysis = extract_usp_emotion(product_data)
 
-    # Write output
-    write_json_to_gcs(args.gcs_output_uri, output_data)
+        # Add metadata
+        output_data = {
+            "version": "1.0",
+            "analysis": analysis
+        }
 
-    print(f"USP and emotion extraction completed. Output saved to {args.gcs_output_uri}")
+        # Write output
+        write_json_to_gcs(gcs_output_uri, output_data)
 
-if __name__ == "__main__":
-    main()
+        return {'status': 'success', 'output_uri': gcs_output_uri}, 200
+
+    except Exception as e:
+        return {'error': str(e)}, 500

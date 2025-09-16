@@ -1,0 +1,4 @@
+functions-framework==3.5.0
+google-cloud-storage==2.10.0
+google-cloud-aiplatform==1.33.0
+vertexai>=1.0.0

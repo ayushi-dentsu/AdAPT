@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Brand Style Analysis Component
+Brand Style Analysis Component - Cloud Function
 Analyze brand style from images/logos using Gemini multimodal.
 """
 
-import argparse
+import functions_framework
 import json
 import tempfile
 import os
@@ -102,31 +102,36 @@ Do not include any text outside the JSON.
             except:
                 pass
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--gcs_image_uris', required=True, help='JSON array of GCS URIs for images')
-    parser.add_argument('--gcs_output_uri', required=True, help='GCS URI for output analysis JSON')
-    parser.add_argument('--project', required=True, help='GCP project ID')
-    parser.add_argument('--location', required=True, help='GCP location')
+@functions_framework.http
+def main_handler(request):
+    """HTTP Cloud Function for brand style analysis."""
+    json_data = request.get_json()
+    if not json_data:
+        return {'error': 'Invalid JSON body'}, 400
 
-    args = parser.parse_args()
+    # Extract parameters
+    gcs_image_uris = json_data.get('gcs_image_uris')
+    gcs_output_uri = json_data.get('gcs_output_uri')
+    project = json_data.get('project')
+    location = json_data.get('location')
 
-    # Parse image URIs
-    image_uris = json.loads(args.gcs_image_uris)
+    if not all([gcs_image_uris, gcs_output_uri, project]):
+        return {'error': 'Missing required parameters'}, 400
 
-    # Analyze style
-    analysis = analyze_brand_style(image_uris)
+    try:
+        # Analyze style
+        analysis = analyze_brand_style(gcs_image_uris)
 
-    # Add metadata
-    output_data = {
-        "version": "1.0",
-        "analysis": analysis
-    }
+        # Add metadata
+        output_data = {
+            "version": "1.0",
+            "analysis": analysis
+        }
 
-    # Write output
-    write_json_to_gcs(args.gcs_output_uri, output_data)
+        # Write output
+        write_json_to_gcs(gcs_output_uri, output_data)
 
-    print(f"Brand style analysis completed. Output saved to {args.gcs_output_uri}")
+        return {'status': 'success', 'output_uri': gcs_output_uri}, 200
 
-if __name__ == "__main__":
-    main()
+    except Exception as e:
+        return {'error': str(e)}, 500
