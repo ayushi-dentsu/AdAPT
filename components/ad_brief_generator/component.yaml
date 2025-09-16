@@ -1,0 +1,33 @@
+name: 'ad_brief_generator'
+description: 'Generate an ad brief by synthesizing USP analysis and brand style analysis using Gemini Pro'
+inputs:
+  - name: gcs_usp_analysis_uri
+    type: String
+    description: 'GCS URI of the USP and emotion analysis JSON file'
+  - name: gcs_style_analysis_uri
+    type: String
+    description: 'GCS URI of the brand style analysis JSON file'
+  - name: gcs_output_uri
+    type: String
+    description: 'GCS URI for the output ad brief JSON file'
+  - name: project
+    type: String
+    description: 'GCP project ID'
+  - name: location
+    type: String
+    description: 'GCP location (e.g., us-central1)'
+implementation:
+  container:
+    image: 'python:3.9'
+    command: [python, main.py]
+    args:
+      - --gcs_usp_analysis_uri
+      - {inputValue: gcs_usp_analysis_uri}
+      - --gcs_style_analysis_uri
+      - {inputValue: gcs_style_analysis_uri}
+      - --gcs_output_uri
+      - {inputValue: gcs_output_uri}
+      - --project
+      - {inputValue: project}
+      - --location
+      - {inputValue: location}

@@ -1,0 +1,28 @@
+name: 'usp_extraction'
+description: 'Extract Unique Selling Propositions and emotional triggers from product data using Gemini Pro'
+inputs:
+  - name: gcs_product_data_uri
+    type: String
+    description: 'GCS URI of the input product data JSON file'
+  - name: gcs_output_uri
+    type: String
+    description: 'GCS URI for the output analysis JSON file'
+  - name: project
+    type: String
+    description: 'GCP project ID'
+  - name: location
+    type: String
+    description: 'GCS location (e.g., us-central1)'
+implementation:
+  container:
+    image: 'python:3.9'
+    command: [python, main.py]
+    args:
+      - --gcs_product_data_uri
+      - {inputValue: gcs_product_data_uri}
+      - --gcs_output_uri
+      - {inputValue: gcs_output_uri}
+      - --project
+      - {inputValue: project}
+      - --location
+      - {inputValue: location}

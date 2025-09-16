@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Approve Task</title>
+</head>
+<body>
+    <h1>Approve {{ task.task_name }}</h1>
+    <form method="post">
+        <label for="usp">USP Analysis:</label><br>
+        <textarea name="usp" rows="10">{{ usp | tojson }}</textarea><br>
+
+        <label for="style">Style Analysis:</label><br>
+        <textarea name="style" rows="10">{{ style | tojson }}</textarea><br>
+
+        {% if brief %}
+        <label for="brief">Ad Brief:</label><br>
+        <textarea name="brief" rows="15">{{ brief | tojson }}</textarea><br>
+        {% endif %}
+
+        <label for="approved_by">Approved by:</label><br>
+        <input type="text" name="approved_by" required><br>
+
+        <button type="submit">Approve</button>
+    </form>
+</body>
+</html>

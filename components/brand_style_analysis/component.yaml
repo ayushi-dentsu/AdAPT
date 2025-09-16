@@ -1,0 +1,28 @@
+name: 'brand_style_analysis'
+description: 'Analyze brand style from creatives (images/logos) using Gemini multimodal'
+inputs:
+  - name: gcs_image_uris
+    type: JsonArray
+    description: 'List of GCS URIs for brand images and logos'
+  - name: gcs_output_uri
+    type: String
+    description: 'GCS URI for the output style analysis JSON file'
+  - name: project
+    type: String
+    description: 'GCP project ID'
+  - name: location
+    type: String
+    description: 'GCP location (e.g., us-central1)'
+implementation:
+  container:
+    image: 'python:3.9'
+    command: [python, main.py]
+    args:
+      - --gcs_image_uris
+      - {inputValue: gcs_image_uris}
+      - --gcs_output_uri
+      - {inputValue: gcs_output_uri}
+      - --project
+      - {inputValue: project}
+      - --location
+      - {inputValue: location}

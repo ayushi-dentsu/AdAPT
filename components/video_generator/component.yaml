@@ -1,0 +1,33 @@
+name: 'video_generator'
+description: 'Generate video ad using Veo3 API based on the approved video prompt'
+inputs:
+  - name: gcs_video_prompt_uri
+    type: String
+    description: 'GCS URI of the approved video prompt JSON file'
+  - name: gcs_output_uri
+    type: String
+    description: 'GCS URI for the output video MP4 file'
+  - name: veo_api_secret_id
+    type: String
+    description: 'ID of the Veo3 API key secret in Secret Manager'
+  - name: project
+    type: String
+    description: 'GCP project ID'
+  - name: location
+    type: String
+    description: 'GCP location (e.g., us-central1)'
+implementation:
+  container:
+    image: 'python:3.9'
+    command: [python, main.py]
+    args:
+      - --gcs_video_prompt_uri
+      - {inputValue: gcs_video_prompt_uri}
+      - --gcs_output_uri
+      - {inputValue: gcs_output_uri}
+      - --veo_api_secret_id
+      - {inputValue: veo_api_secret_id}
+      - --project
+      - {inputValue: project}
+      - --location
+      - {inputValue: location}

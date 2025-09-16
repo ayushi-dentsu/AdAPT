@@ -7,16 +7,16 @@ from google_cloud_pipeline_components.v1.wait_gcp_resources import WaitGcpResour
 # component definitions to a central repository. For this example, we load them from local files.
 
 usp_extraction_op = dsl.load_component_from_file(
-    'usp_extraction/component.yaml'
+    'components/usp_extraction/component.yaml'
 )
 brand_style_analysis_op = dsl.load_component_from_file(
-    'brand_style_analysis/component.yaml'
+    'components/brand_style_analysis/component.yaml'
 )
 ad_brief_generator_op = dsl.load_component_from_file(
-    'ad_brief_generator/component.yaml'
+    'components/ad_brief_generator/component.yaml'
 )
 video_generator_op = dsl.load_component_from_file(
-    'video_generator/component.yaml'
+    'components/video_generator/component.yaml'
 )
 
 
