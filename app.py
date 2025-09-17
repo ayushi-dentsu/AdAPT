@@ -4,10 +4,12 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-import vertexai
-from vertexai.preview.generative_models import GenerativeModel, Part
+from google import genai
 from google.cloud import storage
 import uuid
+from PIL import Image
+import io
+import time
 
 # --- Configuration ---
 PROJECT_ID = "vdc200015-ai-cxm-2-np"  # @param {type:"string"}
@@ -28,10 +30,8 @@ creatives_df = pd.read_csv('Project Dataset - Sheet1.csv')
 # --- Vertex AI Initialization ---
 # This uses Application Default Credentials (ADC).
 # You must be authenticated via `gcloud auth application-default login`.
-vertexai.init(project=PROJECT_ID, location=LOCATION)
-multimodal_model = GenerativeModel("gemini-2.5-pro")
-# Initialize the video model
-video_model = GenerativeModel(VIDEO_MODEL_NAME)
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+client = genai.Client(project=PROJECT_ID, location=LOCATION)
 # Initialize the GCS client
 storage_client = storage.Client()
 
@@ -91,8 +91,8 @@ def get_ai_analysis(prompt_text, image_url, scraped_text=""):
                 
                 # Create the image part from the downloaded data
                 print("Creating image part from downloaded data...")
-                image_part = Part.from_data(image_response.content, mime_type="image/jpeg")
-                content_parts.append(image_part)
+                image = Image.open(io.BytesIO(image_response.content))
+                content_parts.append(image)
                 
             except requests.RequestException as img_e:
                 print(f"Could not download image from {image_url}: {img_e}")
@@ -100,7 +100,10 @@ def get_ai_analysis(prompt_text, image_url, scraped_text=""):
                 # prompt += "\n\nNote: The brand creative image could not be loaded."
 
         print("Sending request to Vertex AI...")
-        response = multimodal_model.generate_content(content_parts)
+        response = client.models.generate_content(
+            model="gemini-2.5-pro",
+            contents=content_parts
+        )
         
         print("Parsing JSON response...")
         # Clean the response to remove markdown code block formatting
@@ -186,7 +189,10 @@ def generate_ad_brief(analysis_data):
     
     try:
         print("Sending ad brief generation request to Vertex AI...")
-        response = multimodal_model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.5-pro",
+            contents=prompt
+        )
         
         print("Parsing ad brief JSON response...")
         # Clean the response to remove markdown code block formatting
@@ -276,15 +282,37 @@ def generate_video(final_brief):
     print(f"Prompt: {full_prompt}")
 
     try:
-        # Call the Vertex AI Video Generation model
-        # Note: The exact API call might differ based on the final SDK for Veo3
-        response = video_model.generate_content([full_prompt])
-        
-        # Assuming the response contains the raw video bytes in response.content
-        video_bytes = response.content 
+        # Call the Vertex AI Video Generation model asynchronously
+        print("Starting asynchronous video generation...")
+        operation = client.models.generate_videos(
+            model=VIDEO_MODEL_NAME,
+            prompt=full_prompt,
+        )
 
-        print("✓ Video data received from Vertex AI.")
+        # Poll the operation status until the video is ready.
+        print("Polling for video generation status...")
+        while not operation.done:
+            print("Waiting for video generation to complete...")
+            time.sleep(10) # Wait for 10 seconds before checking again
+            operation = client.operations.get(operation)
+
+        print("✓ Video generation operation complete.")
         
+        # Save the video to a temporary file to get the bytes
+        video = operation.response.generated_videos[0]
+        temp_filename = f"temp_video_{uuid.uuid4().hex}.mp4"
+        try:
+            print(f"Saving video to temporary file: {temp_filename}")
+            video.video.save(temp_filename)
+            with open(temp_filename, "rb") as f:
+                video_bytes = f.read()
+            print("✓ Video data read from temporary file.")
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(temp_filename):
+                os.remove(temp_filename)
+                print(f"✓ Temporary file {temp_filename} deleted.")
+
         # Upload the generated video to GCS
         video_url = upload_to_gcs(video_bytes, GCS_BUCKET_NAME)
 
