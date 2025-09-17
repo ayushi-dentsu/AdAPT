@@ -9,6 +9,10 @@
 <body>
     <div class="container mt-5">
         <h1 class="mb-4">AdAPT Prototype: Step 3 - Video Result</h1>
+
+        <div class="alert alert-info">
+            Please note: Video generation can take several minutes. Thank you for your patience.
+        </div>
         
         {% if video_result.status == 'success' %}
             <div class="alert alert-success">
@@ -18,7 +22,7 @@
                 <div class="card-header">Generated Video</div>
                 <div class="card-body text-center">
                     <video controls width="100%" autoplay muted>
-                        <source src="{{ video_result.video_url }}" type="video/mp4">
+                        <source src="{{ url_for('static', filename='videos/' + video_result.video_url) }}" type="video/mp4">
                         Your browser does not support the video tag.
                     </video>
                 </div>

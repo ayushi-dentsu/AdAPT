@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from google import genai
-from google.cloud import storage
+from google.genai import types
 import uuid
 from PIL import Image
 import io
@@ -24,6 +24,10 @@ VIDEO_MODEL_NAME = "veo-3.0-generate-001"
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+# Create static/videos directory if it doesn't exist
+if not os.path.exists('static/videos'):
+    os.makedirs('static/videos')
+
 # --- Data Loading ---
 creatives_df = pd.read_csv('Project Dataset - Sheet1.csv')
 
@@ -32,8 +36,6 @@ creatives_df = pd.read_csv('Project Dataset - Sheet1.csv')
 # You must be authenticated via `gcloud auth application-default login`.
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 client = genai.Client(project=PROJECT_ID, location=LOCATION)
-# Initialize the GCS client
-storage_client = storage.Client()
 
 
 # --- Helper Functions ---
@@ -248,85 +250,65 @@ def generate_ad_brief(analysis_data):
         print(f"Ad Brief Generation Error ({error_type}): {error_details}")
         return {"error": error_details}
 
-def upload_to_gcs(video_data, bucket_name):
-    """Uploads video data to GCS and returns the public URL."""
-    try:
-        bucket = storage_client.bucket(bucket_name)
-        # Generate a unique filename
-        filename = f"video-ad-{uuid.uuid4().hex}.mp4"
-        blob = bucket.blob(filename)
-
-        print(f"Uploading video to gs://{bucket_name}/{filename}...")
-        # Upload the video bytes
-        blob.upload_from_string(video_data, content_type="video/mp4")
-
-        # Make the blob publicly viewable
-        blob.make_public()
-
-        print(f"✓ Video uploaded successfully. Public URL: {blob.public_url}")
-        return blob.public_url
-    except Exception as e:
-        print(f"Error uploading to GCS: {e}")
-        return None
-
 def generate_video(final_brief):
     """
-    Generates a video using the Vertex AI video model and uploads it to GCS.
+    Generates a video using the Vertex AI video model and saves it locally.
     """
-    # Construct the prompt from the final brief
     scenes = final_brief.get('script', [])
-    style_prompt = f"A modern, energetic commercial. Color palette: {', '.join(final_brief.get('styleGuidance', {}).get('dominantColors', []))}. "
-    full_prompt = style_prompt + " ".join([scene.get('visuals', '') for scene in scenes])
+    style_analysis = final_brief.get('styleGuidance', {})
+    
+    # Enhanced prompt construction
+    style_prompt = (
+        f"A {style_analysis.get('tone', 'modern and energetic')} commercial. "
+        f"Dominant colors: {', '.join(style_analysis.get('dominantColors', []))}. "
+        "Create a cinematic, photorealistic, 4k resolution video with professional color grading and dynamic camera movement."
+    )
+    visual_descriptions = " ".join([scene.get('visuals', '') for scene in scenes])
+    full_prompt = f"{style_prompt} SCENES: {visual_descriptions}"
 
     print("--- Generating Video with Vertex AI ---")
-    print(f"Prompt: {full_prompt}")
+    print(f"Enhanced Prompt: {full_prompt}")
 
     try:
-        # Call the Vertex AI Video Generation model asynchronously
+        duration_seconds = sum(scene.get('duration_seconds', 0) for scene in scenes)
         print("Starting asynchronous video generation...")
         operation = client.models.generate_videos(
             model=VIDEO_MODEL_NAME,
             prompt=full_prompt,
+            config=types.GenerateVideosConfig(
+                aspect_ratio="16:9",
+                duration_seconds=duration_seconds,
+                enhance_prompt=True,
+                generate_sudio=True,
+                negative_prompt="wrong spellings",
+                resolution="720p"
+            )
         )
 
-        # Poll the operation status until the video is ready.
         print("Polling for video generation status...")
         while not operation.done:
             print("Waiting for video generation to complete...")
-            time.sleep(10) # Wait for 10 seconds before checking again
+            time.sleep(10)
             operation = client.operations.get(operation)
 
         print("✓ Video generation operation complete.")
         
-        # Save the video to a temporary file to get the bytes
-        video = operation.response.generated_videos[0]
-        temp_filename = f"temp_video_{uuid.uuid4().hex}.mp4"
-        try:
-            print(f"Saving video to temporary file: {temp_filename}")
-            video.video.save(temp_filename)
-            with open(temp_filename, "rb") as f:
-                video_bytes = f.read()
-            print("✓ Video data read from temporary file.")
-        finally:
-            # Clean up the temporary file
-            if os.path.exists(temp_filename):
-                os.remove(temp_filename)
-                print(f"✓ Temporary file {temp_filename} deleted.")
+        generated_video = operation.response.generated_videos[0]
+        filename = f"video-ad-{uuid.uuid4().hex}.mp4"
+        filepath = os.path.join('static', 'videos', filename)
+        
+        print("Downloading the generated video...")
+        client.files.download(file=generated_video.video)
+        
+        print(f"Saving video to local path: {filepath}")
+        generated_video.video.save(filepath)
+        print("✓ Video saved successfully.")
 
-        # Upload the generated video to GCS
-        video_url = upload_to_gcs(video_bytes, GCS_BUCKET_NAME)
-
-        if video_url:
-            return {
-                "status": "success",
-                "video_url": video_url,
-                "message": "Video generated and uploaded successfully."
-            }
-        else:
-            return {
-                "status": "error",
-                "message": "Failed to upload video to Google Cloud Storage."
-            }
+        return {
+            "status": "success",
+            "video_url": filename,  # Return just the filename
+            "message": "Video generated and saved successfully."
+        }
             
     except Exception as e:
         print(f"Error during video generation: {e}")
