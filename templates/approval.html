@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdAPT Prototype - Approval</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">AdAPT Prototype: Step 2 - Human Approval</h1>
+        <p>Review and edit the AI-generated ad brief below. Click "Approve & Generate Video" when you're ready.</p>
+
+        <form action="/approval" method="POST">
+            <div class="card mb-4">
+                <div class="card-header">Style Guidance (AI-Generated)</div>
+                <div class="card-body">
+                    <p><strong>Tone:</strong> {{ style_analysis.tone }}</p>
+                    <p><strong>Font Style:</strong> {{ style_analysis.font_style }}</p>
+                    <p><strong>Dominant Colors:</strong>
+                        {% for color in style_analysis.dominant_colors %}
+                            <span class="badge" style="background-color: {{ color }}; color: #fff; border: 1px solid #ccc;">{{ color }}</span>
+                        {% endfor %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Creative Brief (Editable)</div>
+                <div class="card-body">
+                    <fieldset>
+                        <legend>Creative Concept</legend>
+                        <div class="mb-3">
+                            <label for="hook" class="form-label">Hook</label>
+                            <input type="text" class="form-control" id="hook" name="hook" value="{{ ad_brief.creativeConcept.hook }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="coreMessage" class="form-label">Core Message</label>
+                            <input type="text" class="form-control" id="coreMessage" name="coreMessage" value="{{ ad_brief.creativeConcept.coreMessage }}">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cta_text" class="form-label">Call to Action Text</label>
+                                <input type="text" class="form-control" id="cta_text" name="cta_text" value="{{ ad_brief.creativeConcept.callToAction.text }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="cta_url" class="form-label">Call to Action URL</label>
+                                <input type="url" class="form-control" id="cta_url" name="cta_url" value="{{ ad_brief.creativeConcept.callToAction.url }}">
+                            </div>
+                        </div>
+                    </fieldset>
+                    <hr>
+                    <fieldset>
+                        <legend>Scene 1</legend>
+                        <div class="mb-3">
+                            <label for="scene1_visuals" class="form-label">Visuals</label>
+                            <textarea class="form-control" id="scene1_visuals" name="scene1_visuals" rows="3">{{ ad_brief.script[0].visuals }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="scene1_voiceover" class="form-label">Voiceover</label>
+                            <input type="text" class="form-control" id="scene1_voiceover" name="scene1_voiceover" value="{{ ad_brief.script[0].voiceover }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="scene1_duration" class="form-label">Duration (seconds)</label>
+                            <input type="number" class="form-control" id="scene1_duration" name="scene1_duration" value="{{ ad_brief.script[0].duration_seconds }}">
+                        </div>
+                    </fieldset>
+                    <hr>
+                    <fieldset>
+                        <legend>Scene 2</legend>
+                        <div class="mb-3">
+                            <label for="scene2_visuals" class="form-label">Visuals</label>
+                            <textarea class="form-control" id="scene2_visuals" name="scene2_visuals" rows="3">{{ ad_brief.script[1].visuals }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="scene2_voiceover" class="form-label">Voiceover</label>
+                            <input type="text" class="form-control" id="scene2_voiceover" name="scene2_voiceover" value="{{ ad_brief.script[1].voiceover }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="scene2_duration" class="form-label">Duration (seconds)</label>
+                            <input type="number" class="form-control" id="scene2_duration" name="scene2_duration" value="{{ ad_brief.script[1].duration_seconds }}">
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success mt-4">Approve & Generate Video</button>
+        </form>
+    </div>
+</body>
+</html>

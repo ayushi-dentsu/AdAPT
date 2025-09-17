@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdAPT Prototype - Input</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">AdAPT Prototype: Step 1 - Input</h1>
+        <p>Select a creative and provide a brand URL to begin the ad generation process.</p>
+
+        {% if error %}
+            <div class="alert alert-danger">
+                <strong>Error:</strong> {{ error }}
+                <p class="mt-2">Please run `gcloud auth application-default login` in your terminal and ensure the account has the 'Vertex AI User' role.</p>
+            </div>
+        {% endif %}
+
+        {% if error_details %}
+            <div class="alert alert-danger">
+                <h5><strong>{{ error_details.error_type }}:</strong> {{ error_details.message }}</h5>
+                
+                <div class="mt-3">
+                    <h6>💡 Suggested Fix:</h6>
+                    <p class="mb-2">{{ error_details.suggestion }}</p>
+                </div>
+                
+                <details class="mt-3">
+                    <summary class="btn btn-outline-secondary btn-sm">Show Technical Details</summary>
+                    <div class="mt-2 p-3" style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+                        <strong>Full Error:</strong><br>
+                        <code style="font-size: 0.875em;">{{ error_details.full_error }}</code>
+                        
+                        {% if error_details.raw_response %}
+                            <br><br><strong>Raw AI Response:</strong><br>
+                            <code style="font-size: 0.875em;">{{ error_details.raw_response }}</code>
+                        {% endif %}
+                    </div>
+                </details>
+            </div>
+        {% endif %}
+        
+        <form action="/" method="POST">
+            <div class="mb-3">
+                <label for="creative_id" class="form-label">Select Creative</label>
+                <select class="form-select" id="creative_id" name="creative_id">
+                    {% for creative in creatives %}
+                        <option value="{{ loop.index0 }}">{{ creative['Creative Name'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="brand_url" class="form-label">Brand/Product URL for Scraping</label>
+                <input type="url" class="form-control" id="brand_url" name="brand_url" placeholder="https://example.com/product" readonly required>
+            </div>
+
+            <div class="mb-3">
+                <label for="creative_title" class="form-label">Creative Title (auto-filled)</label>
+                <input type="text" class="form-control" id="creative_title" name="creative_title" readonly>
+            </div>
+            <div class="mb-3">
+                <label for="image_url" class="form-label">Ad Creative Image URL (auto-filled)</label>
+                <input type="url" class="form-control" id="image_url" name="image_url" readonly>
+            </div>
+            <button type="submit" class="btn btn-primary">Generate Analysis</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('creative_id').addEventListener('change', function() {
+            const creativeId = this.value;
+            fetch(`/get-creative-details/${creativeId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.error) {
+                        document.getElementById('creative_title').value = data.creative_title;
+                        document.getElementById('image_url').value = data.image_url;
+                        document.getElementById('brand_url').value = data.link_url;
+                    }
+                });
+        });
+        // Trigger change on page load to populate fields for the default selection
+        document.getElementById('creative_id').dispatchEvent(new Event('change'));
+    </script>
+</body>
+</html>

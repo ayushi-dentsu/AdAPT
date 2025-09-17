@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdAPT Prototype - Review Analysis</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">AdAPT Prototype: Step 1.5 - Review Initial Analysis</h1>
+        <p>This is the raw JSON output from the first AI analysis step. Review the results below.</p>
+
+        <div class="card bg-light mb-4">
+            <div class="card-header">AI Analysis Output</div>
+            <div class="card-body">
+                <pre><code>{{ analysis_data }}</code></pre>
+            </div>
+        </div>
+
+        <form action="/generate-brief" method="POST">
+            <button type="submit" class="btn btn-success">Looks Good, Generate Ad Brief</button>
+            <a href="/" class="btn btn-secondary">Start Over</a>
+        </form>
+        
+    </div>
+</body>
+</html>

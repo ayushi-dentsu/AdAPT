@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdAPT Prototype - Result</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">AdAPT Prototype: Step 3 - Video Result</h1>
+        
+        {% if video_result.status == 'success' %}
+            <div class="alert alert-success">
+                {{ video_result.message }}
+            </div>
+            <div class="card">
+                <div class="card-header">Generated Video</div>
+                <div class="card-body text-center">
+                    <video controls width="100%" autoplay muted>
+                        <source src="{{ video_result.video_url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </div>
+        {% else %}
+            <div class="alert alert-danger">
+                <p><strong>Error generating video:</strong></p>
+                <p>{{ video_result.message }}</p>
+            </div>
+        {% endif %}
+
+        <a href="/" class="btn btn-primary mt-4">Start Over</a>
+    </div>
+</body>
+</html>
