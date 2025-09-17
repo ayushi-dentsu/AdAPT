@@ -3,26 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AdAPT Prototype - Review Analysis</title>
+    <title>AdAPT Prototype - Review & Refine Analysis</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">AdAPT Prototype: Step 1.5 - Review Initial Analysis</h1>
-        <p>This is the raw JSON output from the first AI analysis step. Review the results below.</p>
-
-        <div class="card bg-light mb-4">
-            <div class="card-header">AI Analysis Output</div>
-            <div class="card-body">
-                <pre><code>{{ analysis_data }}</code></pre>
-            </div>
-        </div>
+        <h1 class="mb-4">AdAPT Prototype: Step 1.5 - Review & Refine Analysis</h1>
+        <p>Review, edit, and approve the AI-generated analysis below. Your refinements will be used to generate the ad brief.</p>
 
         <form action="/generate-brief" method="POST">
-            <button type="submit" class="btn btn-success">Looks Good, Generate Ad Brief</button>
+            <!-- USP and Emotion Analysis Card -->
+            <div class="card mb-4">
+                <div class="card-header">USP & Emotion Analysis</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="usps" class="form-label"><strong>Unique Selling Propositions (USPs)</strong></label>
+                        <textarea class="form-control" id="usps" name="usps" rows="4">{{ analysis_data.usps | join('\n') }}</textarea>
+                        <div class="form-text">Enter each USP on a new line.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="emotions" class="form-label"><strong>Target Emotions</strong></label>
+                        <textarea class="form-control" id="emotions" name="emotions" rows="3">{{ analysis_data.emotions | join('\n') }}</textarea>
+                        <div class="form-text">Enter each emotion on a new line.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Style Analysis Card -->
+            <div class="card mb-4">
+                <div class="card-header">Brand Style Analysis</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="tone" class="form-label"><strong>Tone of Voice</strong></label>
+                        <input type="text" class="form-control" id="tone" name="tone" value="{{ analysis_data.style_analysis.tone }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="font_style" class="form-label"><strong>Font Style</strong></label>
+                        <input type="text" class="form-control" id="font_style" name="font_style" value="{{ analysis_data.style_analysis.font_style }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Dominant Colors</strong></label>
+                        <div>
+                        {% for color in analysis_data.style_analysis.dominant_colors %}
+                            <span class="badge p-2 me-2" style="background-color: {{ color }}; border: 1px solid #ccc;">
+                                <input type="text" name="dominant_colors" value="{{ color }}" class="form-control form-control-sm" style="display: inline; width: 100px; background-color: transparent; color: white; border: none;">
+                            </span>
+                        {% endfor %}
+                        </div>
+                        <div class="form-text">Edit the hex codes directly.</div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success">Approve & Generate Ad Brief</button>
             <a href="/" class="btn btn-secondary">Start Over</a>
         </form>
-        
     </div>
 </body>
 </html>

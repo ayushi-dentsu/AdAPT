@@ -18,7 +18,7 @@ The architecture is built on Google Cloud, leveraging serverless components for 
   +------------------+           +--------------------------------+           +-----------------+
   |   Input Sources  |---------->|      AdAPT Core Pipeline       |---------->|  Final Outputs  |
   | - Product Text   |           |    (Vertex AI Pipelines)       |           | - Video Ad (MP4)|
-  | - Brand Creatives|           +--------------------------------+           | - Ad Brief (JSON)|
+  | - Brand Creatives|           +--------------------------------+           | - Ad Brief      |
   +------------------+                         |                               +-----------------+
                                                | (Executes Components)
                                                |

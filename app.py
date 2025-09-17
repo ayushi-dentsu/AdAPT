@@ -5,11 +5,11 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from google import genai
-from google.genai import types
 import uuid
 from PIL import Image
 import io
 import time
+from google.genai import types
 
 # --- Configuration ---
 PROJECT_ID = "vdc200015-ai-cxm-2-np"  # @param {type:"string"}
@@ -59,17 +59,20 @@ def get_ai_analysis(prompt_text, image_url, scraped_text=""):
     Analyzes text, an image, and scraped web content using Gemini Pro Vision.
     """
     prompt = f"""
-    Analyze the provided product information, brand creative, and website content.
-    
-    **Ad Creative Title:** "{prompt_text}"
-    **Scraped Website Content:** "{scraped_text[:2000]}"  # Limit context size
-    **Brand Creative:** [Image]
+    You are an expert brand strategist. Your task is to analyze the provided product information, brand creative, and website content.
+    You must base your analysis *only* on the provided text and image. Do not invent or infer any information not present in the source material.
 
-    **Your Task:**
+    **Source Materials:**
+    - **Ad Creative Title:** "{prompt_text}"
+    - **Scraped Website Content:** "{scraped_text[:2000]}"  # Limit context size
+    - **Brand Creative:** [Image]
+
+    **Your Analysis Task:**
     1.  **Extract USPs & Emotions:** Identify 3-5 unique selling propositions (USPs) and the primary emotions the ad should evoke.
     2.  **Analyze Brand Style:** Describe the brand's style, tone of voice, and dominant color palette based on the image.
 
-    **Return a JSON object with the following structure:**
+    **Output Requirement:**
+    Return a single, valid JSON object with the following structure. Do not include any explanatory text before or after the JSON object.
     {{
       "usps": ["usp1", "usp2", ...],
       "emotions": ["emotion1", "emotion2", ...],
@@ -167,15 +170,17 @@ def generate_ad_brief(analysis_data):
     """
     analysis_str = json.dumps(analysis_data, indent=2)
     prompt = f"""
-    You are an expert ad scriptwriter. Synthesize the following analysis into a cohesive ad brief.
+    You are an award-winning creative director. Your task is to synthesize the provided analysis into a cohesive and compelling ad brief.
+    Generate the script using *only* the information from the provided Analysis Data. Do not add new concepts, features, or ideas.
 
     **Analysis Data:**
     {analysis_str}
 
     **Your Task:**
-    Create a complete ad brief including a hook, core message, a 2-scene script with visuals and voiceover, and a call to action.
+    Create a complete ad brief that logically connects the hook to the core message and ends with a strong call to action. The script should be exactly two scenes.
 
-    **Return a JSON object following this exact schema:**
+    **Output Requirement:**
+    Return a single, valid JSON object following this exact schema. Do not include any explanatory text before or after the JSON object.
     {{
       "creativeConcept": {{
         "hook": "...",
@@ -260,11 +265,18 @@ def generate_video(final_brief):
     # Enhanced prompt construction
     style_prompt = (
         f"A {style_analysis.get('tone', 'modern and energetic')} commercial. "
-        f"Dominant colors: {', '.join(style_analysis.get('dominantColors', []))}. "
-        "Create a cinematic, photorealistic, 4k resolution video with professional color grading and dynamic camera movement."
+        f"The dominant color palette is {', '.join(style_analysis.get('dominantColors', []))}. "
+        "The overall style is cinematic, photorealistic, 4k resolution, with professional color grading and dynamic camera movement. "
+        "The scenes must flow together seamlessly with smooth transitions, creating a single, cohesive narrative."
     )
-    visual_descriptions = " ".join([scene.get('visuals', '') for scene in scenes])
-    full_prompt = f"{style_prompt} SCENES: {visual_descriptions}"
+    
+    # Create detailed scene descriptions
+    scene_prompts = []
+    for i, scene in enumerate(scenes):
+        scene_prompts.append(f"Scene {i+1}: {scene.get('visuals', '')}")
+    visual_descriptions = " ".join(scene_prompts)
+
+    full_prompt = f"{style_prompt} The story unfolds as follows: {visual_descriptions}"
 
     print("--- Generating Video with Vertex AI ---")
     print(f"Enhanced Prompt: {full_prompt}")
@@ -276,11 +288,11 @@ def generate_video(final_brief):
             model=VIDEO_MODEL_NAME,
             prompt=full_prompt,
             config=types.GenerateVideosConfig(
-                aspect_ratio="16:9",
-                duration_seconds=duration_seconds,
-                enhance_prompt=True,
-                generate_sudio=True,
-                negative_prompt="wrong spellings",
+                aspectRatio="16:9",
+                durationSeconds=duration_seconds,
+                enhancePrompt=True,
+                generateAudio=True,
+                negativePrompt="wrong spellings",
                 resolution="720p"
             )
         )
@@ -293,15 +305,12 @@ def generate_video(final_brief):
 
         print("✓ Video generation operation complete.")
         
-        generated_video = operation.response.generated_videos[0]
+        video = operation.response.generated_videos[0]
         filename = f"video-ad-{uuid.uuid4().hex}.mp4"
         filepath = os.path.join('static', 'videos', filename)
         
-        print("Downloading the generated video...")
-        client.files.download(file=generated_video.video)
-        
         print(f"Saving video to local path: {filepath}")
-        generated_video.video.save(filepath)
+        video.video.save(filepath)
         print("✓ Video saved successfully.")
 
         return {
@@ -366,17 +375,32 @@ def analysis_review():
         return redirect(url_for('index'))
     
     analysis_data = session['analysis_data']
-    return render_template('analysis_review.html', analysis_data=json.dumps(analysis_data, indent=4))
+    # Pass the dictionary directly to the template
+    return render_template('analysis_review.html', analysis_data=analysis_data)
 
 @app.route('/generate-brief', methods=['POST'])
 def generate_brief_route():
     if 'analysis_data' not in session:
         return redirect(url_for('index'))
 
-    analysis = session['analysis_data']
+    # Reconstruct the analysis data from the form
+    # This is the new HITL step where we take user edits
+    refined_analysis = {
+        "usps": [usp.strip() for usp in request.form.get('usps', '').splitlines() if usp.strip()],
+        "emotions": [emotion.strip() for emotion in request.form.get('emotions', '').splitlines() if emotion.strip()],
+        "style_analysis": {
+            "tone": request.form.get('tone', ''),
+            "dominant_colors": request.form.getlist('dominant_colors'), # .getlist() is crucial for multiple values
+            "font_style": request.form.get('font_style', '')
+        }
+    }
     
-    print("--- Step 2: Generating Ad Brief ---")
-    ad_brief = generate_ad_brief(analysis)
+    # Update the session with the refined data for consistency
+    session['analysis_data'] = refined_analysis
+    print(f"--- Refined Analysis Received: {json.dumps(refined_analysis, indent=2)} ---")
+
+    print("--- Step 2: Generating Ad Brief from Refined Data ---")
+    ad_brief = generate_ad_brief(refined_analysis)
 
     if "error" in ad_brief:
         # This could happen if the second call fails. Show detailed error.

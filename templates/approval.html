@@ -12,19 +12,6 @@
         <p>Review and edit the AI-generated ad brief below. Click "Approve & Generate Video" when you're ready.</p>
 
         <form action="/approval" method="POST">
-            <div class="card mb-4">
-                <div class="card-header">Style Guidance (AI-Generated)</div>
-                <div class="card-body">
-                    <p><strong>Tone:</strong> {{ style_analysis.tone }}</p>
-                    <p><strong>Font Style:</strong> {{ style_analysis.font_style }}</p>
-                    <p><strong>Dominant Colors:</strong>
-                        {% for color in style_analysis.dominant_colors %}
-                            <span class="badge" style="background-color: {{ color }}; color: #fff; border: 1px solid #ccc;">{{ color }}</span>
-                        {% endfor %}
-                    </p>
-                </div>
-            </div>
-
             <div class="card">
                 <div class="card-header">Creative Brief (Editable)</div>
                 <div class="card-body">
